@@ -16,7 +16,7 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
-#include <cmath>
+#include <algorithm>
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -28,7 +28,7 @@ public:
 
     UnsteadySolver();
     // initial conditions part 1:
-    UnsteadySolver(int N, double tStop, double cfl, double re);
+    UnsteadySolver(int N, double tStop, double cfl, double re, double a);
     // initial conditions part 2:
     void setCompDomainVec(const Eigen::VectorXd &uVec, const Eigen::VectorXd &vVec, const Eigen::VectorXd &pVec);
 
@@ -36,6 +36,9 @@ public:
 
     void updateDt();
 
+    int getVecIdxU(int i, int j);
+    int getVecIdxV(int i, int j);
+    int getVecIdxP(int i, int j);
     // solving the linear system at each time step
     void constructMatrixA_uv(double delTime);
     void constructMatrixA_p(); // only once
@@ -61,13 +64,14 @@ private:
     double m_tol = 1e-5;
     double m_re;
     double m_cfl;
+    double m_a;
     // discretisation parameters
     int m_N;
     // spatial parameters
     double m_x0 = 0.0;
     double m_x1 = 1.0;
-    double m_y0 = 0.0;
-    double m_y1 = 1.0;
+    double m_y0 = m_x0;
+    double m_y1 = m_x1;
     double m_dx;
     // temporal parameters
     double m_tStart = 0.0;
