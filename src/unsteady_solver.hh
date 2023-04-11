@@ -34,8 +34,6 @@ public:
 
     // PUBLIC METHODS
 
-    // void updateDt();
-
     int getVecIdxU(int i, int j);
     int getVecIdxV(int i, int j);
     int getVecIdxP(int i, int j);
@@ -44,6 +42,7 @@ public:
     void constructMatrixA_p(); // only once
     void constructLoadVecU();
     void constructLoadVecV();
+    void constructLoadVecP();
 
     void solveForU_Star(); // step 1 update fieldVecU
     void solveForV_Star(); // step 1 update fieldVecV
@@ -51,9 +50,12 @@ public:
     void solveForU_Next(); // step 3 update fieldVecU again
     void solveForV_Next(); // step 3 update fieldVecV again
 
+    void checkIfSteady();
+
     // ACCESSING PRIVATE MEMBERS
     const double tStop();
     const double dt();
+    const double reachedSteady();
 
 private:
     // CONSTANT ATTRIBUTES
@@ -95,14 +97,13 @@ private:
     Eigen::VectorXd m_uVec;
     Eigen::VectorXd m_vVec;
     Eigen::VectorXd m_pVec;
+
     // previous time step field vectors
     Eigen::VectorXd m_uVecPrev;
     Eigen::VectorXd m_vVecPrev;
-    Eigen::VectorXd m_pVecPrev;
     // field vector difference
     Eigen::VectorXd m_uVecDiff;
     Eigen::VectorXd m_vVecDiff;
-    Eigen::VectorXd m_pVecDiff;
 
     // load vectors at each step
     Eigen::VectorXd m_uLoadVec;

@@ -24,9 +24,9 @@ UnsteadySolver::UnsteadySolver(int N, double tStop, double cfl, double re, doubl
 
     m_dt = m_re * m_dx * m_dx;
 
-    m_uLoadVec = Eigen::VectorXd::Ones(m_N * (m_N - 1));
-    m_vLoadVec = Eigen::VectorXd::Ones(m_N * (m_N - 1));
-    m_pLoadVec = Eigen::VectorXd::Ones(m_N * m_N);
+    m_uLoadVec = Eigen::VectorXd::Zero(m_N * (m_N - 1));
+    m_vLoadVec = Eigen::VectorXd::Zero(m_N * (m_N - 1));
+    m_pLoadVec = Eigen::VectorXd::Zero(m_N * m_N);
 }
 
 void UnsteadySolver::setCompDomainVec(const Eigen::VectorXd &uVec, const Eigen::VectorXd &vVec, const Eigen::VectorXd &pVec)
@@ -38,26 +38,7 @@ void UnsteadySolver::setCompDomainVec(const Eigen::VectorXd &uVec, const Eigen::
     m_vVecPrev = vVec;
 
     m_pVec = pVec;
-    m_pVecPrev = pVec;
 }
-
-// void UnsteadySolver::updateDt()
-// {
-//     double maxSpeed = std::max(m_uVec.lpNorm<Eigen::Infinity>(), m_vVec.lpNorm<Eigen::Infinity>());
-//     double diffusionPart = m_dx / maxSpeed;
-
-//     double convectionPart = m_re * m_dx * m_dx;
-
-//     m_dt = m_cfl * std::min(diffusionPart, convectionPart);
-
-//     // DEBUG
-//     // bool db = true;
-//     bool db = false;
-//     if (db)
-//     {
-//         std::cout << "dt is " << m_dt << std::endl;
-//     }
-// }
 
 int UnsteadySolver::getVecIdxU(int i, int j)
 {
@@ -365,9 +346,154 @@ void UnsteadySolver::solveForV_Star()
     }
 }
 
+void UnsteadySolver::constructLoadVecP()
+{
+    double north, south, east, west;
+
+    for (int i = 0; i < m_N; ++i)
+    {
+        for (int j = 0; j < m_N; ++j)
+        {
+            // Direction ###
+            if (j < m_N - 1)
+            {
+                north = m_vVec(getVecIdxV(i, j));
+            }
+            else // top
+            {
+                north = 0.0;
+            }
+
+            if (j > 0)
+            {
+                south = m_vVec(getVecIdxV(i, j - 1));
+            }
+            else // bottom
+            {
+                south = 0.0;
+            }
+
+            if (i < m_N - 1)
+            {
+                east = m_uVec(getVecIdxU(i, j));
+            }
+            else // right
+            {
+                east = 0.0;
+            }
+
+            if (i > 0)
+            {
+                west = m_uVec(getVecIdxU(i - 1, j));
+            }
+            else // left
+            {
+                west = 0.0;
+            }
+
+            m_pLoadVec(getVecIdxP(i, j)) = m_dx * (east - west + north - south);
+        }
+    }
+
+    // DEBUG
+    // bool db = true;
+    bool db = false;
+    if (db)
+    {
+        std::cout << m_pLoadVec << std::endl;
+    }
+}
+
 void UnsteadySolver::solveForP_Next()
 {
+    m_pVec = m_solverP.solve(m_pLoadVec);
+
+    // DEBUG
+    // bool db = true;
+    bool db = false;
+    if (db)
+    {
+        std::cout << m_vVec << std::endl;
+    }
+}
+
+void UnsteadySolver::solveForU_Next()
+{
+    double pGradX;
+
+    for (int j = 0; j < m_N; ++j)
+    {
+        for (int i = 0; i < m_N - 1; ++i)
+        {
+            // Direction ###
+            if (i < m_N - 2 && i > 0)
+            {
+                pGradX = (m_pVec(getVecIdxP(i + 1, j)) - m_pVec(getVecIdxP(i, j))) / m_dx;
+            }
+            else // left and right
+            {
+                pGradX = 0.0;
+            }
+
+            m_uVec(getVecIdxP(i, j)) += m_dt * pGradX;
+        }
+    }
+
+    // DEBUG
+    // bool db = true;
+    bool db = false;
+    if (db)
+    {
+        std::cout << m_uVec << std::endl;
+    }
+}
+
+void UnsteadySolver::solveForV_Next()
+{
+    double pGradY;
+
+    for (int i = 0; i < m_N; ++i)
+    {
+        for (int j = 0; j < m_N - 1; ++j)
+        {
+            // Direction ###
+            if (j < m_N - 2 && j > 0)
+            {
+                pGradY = (m_pVec(getVecIdxP(i, j + 1)) - m_pVec(getVecIdxP(i, j))) / m_dx;
+            }
+            else // top and bottom
+            {
+                pGradY = 0.0;
+            }
+
+            m_vVec(getVecIdxP(i, j)) += m_dt * pGradY;
+        }
+    }
+
+    // DEBUG
+    // bool db = true;
+    bool db = false;
+    if (db)
+    {
+        std::cout << m_vVec << std::endl;
+    }
+}
+
+void UnsteadySolver::checkIfSteady()
+{
+    m_uVecDiff = m_uVec - m_uVecPrev;
+    m_vVecDiff = m_vVec - m_vVecPrev;
+    double uContribution = abs(m_uVecDiff.lpNorm<Eigen::Infinity>() / m_uVec.lpNorm<Eigen::Infinity>());
+    double vContribution = abs(m_vVecDiff.lpNorm<Eigen::Infinity>() / m_vVec.lpNorm<Eigen::Infinity>());
+
+    std::cout << uContribution << " and " << vContribution << std::endl;
+
+    if (uContribution + vContribution < m_tol)
+    {
+        m_reachedSteady = true;
+    }
 }
 
 const double UnsteadySolver::tStop() { return m_tStop; }
 const double UnsteadySolver::dt() { return m_dt; }
+const double UnsteadySolver::reachedSteady() { return m_reachedSteady; }
