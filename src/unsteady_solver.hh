@@ -34,18 +34,16 @@ public:
 
     // PUBLIC METHODS
 
-    void updateDt();
+    // void updateDt();
 
     int getVecIdxU(int i, int j);
     int getVecIdxV(int i, int j);
     int getVecIdxP(int i, int j);
     // solving the linear system at each time step
-    void constructMatrixA_uv(double delTime);
+    void constructMatrixA_uv();
     void constructMatrixA_p(); // only once
     void constructLoadVecU();
-    void constructBcVecU();
     void constructLoadVecV();
-    void constructBcVecV();
 
     void solveForU_Star(); // step 1 update fieldVecU
     void solveForV_Star(); // step 1 update fieldVecV
@@ -76,6 +74,7 @@ private:
     // temporal parameters
     double m_tStart = 0.0;
     double m_tStop;
+    bool m_reachedSteady = false;
 
     // DYNAMIC ATTRIBUTES
     // -----------------------------
@@ -109,10 +108,6 @@ private:
     Eigen::VectorXd m_uLoadVec;
     Eigen::VectorXd m_vLoadVec;
     Eigen::VectorXd m_pLoadVec;
-    // boundary condition vectors at each step
-    Eigen::VectorXd m_uBcVec;
-    Eigen::VectorXd m_vBcVec;
-    Eigen::VectorXd m_pBcVec;
 };
 
 #endif

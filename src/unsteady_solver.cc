@@ -19,7 +19,14 @@ UnsteadySolver::UnsteadySolver(int N, double tStop, double cfl, double re, doubl
     m_cfl = cfl;
     m_re = re;
     m_a = a;
+
     m_dx = (m_x1 - m_x0) / m_N;
+
+    m_dt = m_re * m_dx * m_dx;
+
+    m_uLoadVec = Eigen::VectorXd::Ones(m_N * (m_N - 1));
+    m_vLoadVec = Eigen::VectorXd::Ones(m_N * (m_N - 1));
+    m_pLoadVec = Eigen::VectorXd::Ones(m_N * m_N);
 }
 
 void UnsteadySolver::setCompDomainVec(const Eigen::VectorXd &uVec, const Eigen::VectorXd &vVec, const Eigen::VectorXd &pVec)
@@ -34,15 +41,23 @@ void UnsteadySolver::setCompDomainVec(const Eigen::VectorXd &uVec, const Eigen::
     m_pVecPrev = pVec;
 }
 
-void UnsteadySolver::updateDt()
-{
-    double maxSpeed = std::max(m_uVec.lpNorm<Eigen::Infinity>(), m_vVec.lpNorm<Eigen::Infinity>());
-    double diffusionPart = m_dx / maxSpeed;
+// void UnsteadySolver::updateDt()
+// {
+//     double maxSpeed = std::max(m_uVec.lpNorm<Eigen::Infinity>(), m_vVec.lpNorm<Eigen::Infinity>());
+//     double diffusionPart = m_dx / maxSpeed;
 
-    double convectionPart = m_re * m_dx * m_dx;
+//     double convectionPart = m_re * m_dx * m_dx;
 
-    m_dt = m_cfl * std::min(diffusionPart, convectionPart);
-}
+//     m_dt = m_cfl * std::min(diffusionPart, convectionPart);
+
+//     // DEBUG
+//     // bool db = true;
+//     bool db = false;
+//     if (db)
+//     {
+//         std::cout << "dt is " << m_dt << std::endl;
+//     }
+// }
 
 int UnsteadySolver::getVecIdxU(int i, int j)
 {
@@ -59,7 +74,7 @@ int UnsteadySolver::getVecIdxP(int i, int j)
     return j * m_N + i;
 }
 
-void UnsteadySolver::constructMatrixA_uv(double delTime)
+void UnsteadySolver::constructMatrixA_uv()
 {
     double alpha = m_dt / m_re / m_dx / m_dx;
 
@@ -87,6 +102,7 @@ void UnsteadySolver::constructMatrixA_uv(double delTime)
     }
 
     m_sMatrixA_uv = A.sparseView();
+    m_solverUV.compute(m_sMatrixA_uv);
 
     // DEBUG
     // bool db = true;
@@ -122,6 +138,7 @@ void UnsteadySolver::constructMatrixA_p()
     }
 
     m_sMatrixA_p = A.sparseView();
+    m_solverP.compute(m_sMatrixA_p);
 
     // DEBUG
     // bool db = true;
@@ -136,17 +153,219 @@ void UnsteadySolver::constructMatrixA_p()
 
 void UnsteadySolver::constructLoadVecU()
 {
-}
+    double centre, north, south, east, west;
+    double nokia1, nokia3, nokia7, nokia9;
 
-void UnsteadySolver::constructBcVecU()
-{
+    for (int j = 0; j < m_N; ++j)
+    {
+        for (int i = 0; i < m_N - 1; ++i)
+        {
+            centre = m_uVec(getVecIdxU(i, j));
+
+            // Direction ###
+            if (j < m_N - 1)
+            {
+                north = m_uVec(getVecIdxU(i, j + 1));
+            }
+            else // top
+            {
+                north = 2 * m_a - centre;
+            }
+
+            if (j > 0)
+            {
+                south = m_uVec(getVecIdxU(i, j - 1));
+            }
+            else // bottom
+            {
+                south = -centre;
+            }
+
+            if (i < m_N - 2)
+            {
+                east = m_uVec(getVecIdxU(i + 1, j));
+            }
+            else // right
+            {
+                east = 0.0;
+            }
+
+            if (i > 0)
+            {
+                west = m_uVec(getVecIdxU(i - 1, j));
+            }
+            else // left
+            {
+                west = 0.0;
+            }
+
+            // Nokia ###
+            if (j < m_N - 1 && j > 0) // middle
+            {
+                nokia1 = m_vVec(getVecIdxV(i, j));
+                nokia3 = m_vVec(getVecIdxV(i + 1, j));
+                nokia7 = m_vVec(getVecIdxV(i, j - 1));
+                nokia9 = m_vVec(getVecIdxV(i + 1, j - 1));
+            }
+            else if (j == m_N - 1) // top
+            {
+                nokia1 = 0.0;
+                nokia3 = 0.0;
+                nokia7 = m_vVec(getVecIdxV(i - 1, j));
+                nokia9 = m_vVec(getVecIdxV(i - 1, j + 1));
+            }
+            else // bottom
+            {
+                nokia1 = m_vVec(getVecIdxV(i, j));
+                nokia3 = m_vVec(getVecIdxV(i, j + 1));
+                nokia7 = 0.0;
+                nokia9 = 0.0;
+            }
+
+            m_uLoadVec(getVecIdxU(i, j)) = centre - m_dt / m_dx / 2 * (centre * (east - west) + (north - south) / 4 * (nokia1 + nokia3 + nokia7 + nokia9));
+
+            if (j == m_N - 1) // top
+            {
+                m_uLoadVec(getVecIdxU(i, j)) += m_dt / m_re / m_dx / m_dx * north;
+            }
+            else if (j == 0) // bottom
+            {
+                m_uLoadVec(getVecIdxU(i, j)) += m_dt / m_re / m_dx / m_dx * south;
+            }
+        }
+    }
+
+    // DEBUG
+    // bool db = true;
+    bool db = false;
+    if (db)
+    {
+        std::cout << m_uLoadVec << std::endl;
+    }
 }
 
 void UnsteadySolver::constructLoadVecV()
 {
+    double centre, north, south, east, west;
+    double nokia1, nokia3, nokia7, nokia9;
+
+    for (int i = 0; i < m_N; ++i)
+    {
+        for (int j = 0; j < m_N - 1; ++j)
+        {
+            centre = m_vVec(getVecIdxV(i, j));
+
+            // Direction ###
+            if (j < m_N - 2)
+            {
+                north = m_vVec(getVecIdxV(i, j + 1));
+            }
+            else // top
+            {
+                north = 0.0;
+            }
+
+            if (j > 0)
+            {
+                south = m_vVec(getVecIdxV(i, j - 1));
+            }
+            else // bottom
+            {
+                south = 0.0;
+            }
+
+            if (i < m_N - 1)
+            {
+                east = m_vVec(getVecIdxV(i + 1, j));
+            }
+            else // right
+            {
+                east = -centre;
+            }
+
+            if (i > 0)
+            {
+                west = m_vVec(getVecIdxV(i - 1, j));
+            }
+            else // left
+            {
+                west = -centre;
+            }
+
+            // Nokia ###
+            if (i < m_N - 1 && i > 0) // middle
+            {
+                nokia1 = m_uVec(getVecIdxU(i - 1, j + 1));
+                nokia3 = m_uVec(getVecIdxU(i, j + 1));
+                nokia7 = m_uVec(getVecIdxU(i - 1, j));
+                nokia9 = m_uVec(getVecIdxU(i, j));
+            }
+            else if (i == m_N - 1) // right
+            {
+                nokia1 = m_uVec(getVecIdxU(i - 1, j + 1));
+                nokia3 = 0.0;
+                nokia7 = m_uVec(getVecIdxU(i - 1, j));
+                nokia9 = 0.0;
+            }
+            else // left
+            {
+                nokia1 = 0.0;
+                nokia3 = m_uVec(getVecIdxU(i, j + 1));
+                nokia7 = 0.0;
+                nokia9 = m_uVec(getVecIdxU(i, j));
+            }
+
+            m_vLoadVec(getVecIdxV(i, j)) = centre - m_dt / m_dx / 2 * (centre * (east - west) + (north - south) / 4 * (nokia1 + nokia3 + nokia7 + nokia9));
+
+            if (i == m_N - 1) // right
+            {
+                m_vLoadVec(getVecIdxV(i, j)) += m_dt / m_re / m_dx / m_dx * east;
+            }
+            else if (i == 0) // left
+            {
+                m_vLoadVec(getVecIdxV(i, j)) += m_dt / m_re / m_dx / m_dx * west;
+            }
+        }
+    }
+
+    // DEBUG
+    // bool db = true;
+    bool db = false;
+    if (db)
+    {
+        std::cout << m_vLoadVec << std::endl;
+    }
 }
 
-void UnsteadySolver::constructBcVecV()
+void UnsteadySolver::solveForU_Star()
+{
+    m_uVecPrev = m_uVec;
+    m_uVec = m_solverUV.solve(m_uLoadVec);
+
+    // DEBUG
+    // bool db = true;
+    bool db = false;
+    if (db)
+    {
+        std::cout << m_uVec << std::endl;
+    }
+}
+
+void UnsteadySolver::solveForV_Star()
+{
+    m_vVecPrev = m_vVec;
+    m_vVec = m_solverUV.solve(m_vLoadVec);
+
+    // DEBUG
+    // bool db = true;
+    bool db = false;
+    if (db)
+    {
+        std::cout << m_vVec << std::endl;
+    }
+}
+
+void UnsteadySolver::solveForP_Next()
 {
 }
 
