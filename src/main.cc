@@ -11,13 +11,77 @@
 
 #include "unsteady_solver.hh"
 
+void loadConfig(int &i_N, double &i_tStop, double &i_cfl, double &i_re, double &i_a, std::string &i_repoDir, std::string &i_simulationName, int &i_plottingFactor)
+{
+    std::ifstream in("./config.txt");
+
+    std::string parameter;
+
+    // dummie disposable variables
+    double double_value;
+    int int_value;
+    std::string string_value;
+
+    while (!in.eof())
+    {
+        // if no read string fits the required parameter, do nothing
+        in >> parameter;
+
+        if (parameter == "N")
+        {
+            in >> int_value;
+            i_N = int_value;
+        }
+        else if (parameter == "tStop")
+        {
+            in >> double_value;
+            i_tStop = double_value;
+        }
+        else if (parameter == "cfl")
+        {
+            in >> double_value;
+            i_cfl = double_value;
+        }
+        else if (parameter == "re")
+        {
+            in >> double_value;
+            i_re = double_value;
+        }
+        else if (parameter == "a")
+        {
+            in >> double_value;
+            i_a = double_value;
+        }
+        else if (parameter == "repoDir")
+        {
+            in >> string_value;
+            i_repoDir = string_value;
+        }
+        else if (parameter == "simulationName")
+        {
+            in >> string_value;
+            i_simulationName = string_value;
+        }
+        else if (parameter == "plottingFactor")
+        {
+            in >> int_value;
+            i_plottingFactor = int_value;
+        }
+    }
+    in.close();
+}
+
 int main()
 {
-    int N = 20;
-    double tStop = 0.25;
-    double cfl = 0.8;
-    double re = 0.1;
-    double a = 1.0;
+    int N;
+    double tStop;
+    double cfl;
+    double re;
+    double a;
+    std::string repoName;
+    std::string simulationName;
+    int plottingFactor;
+    loadConfig(N, tStop, cfl, re, a, repoName, simulationName, plottingFactor);
 
     // initially all zero w.r.t. the gauge pressure
     Eigen::VectorXd uVecInitialCond = Eigen::VectorXd::Zero(N * (N - 1));
@@ -26,11 +90,12 @@ int main()
 
     UnsteadySolver testSolver(N, tStop, cfl, re, a);
     testSolver.setCompDomainVec(uVecInitialCond, vVecInitialCond, pVecInitialCond);
-    testSolver.setOutputDataAttributes((std::string) "/Users/zianhuang/Room214N/dev/mphil/lidDrivenCavity/", (std::string) "testSolver");
+    testSolver.setOutputDataAttributes(repoName, simulationName);
     testSolver.constructMatrixA_uv();
     testSolver.constructMatrixA_p();
 
     double t = 0.0;
+    int frame = 0;
     testSolver.writeDataToFiles(t);
     while (!testSolver.reachedSteady())
     {
@@ -48,8 +113,12 @@ int main()
 
         testSolver.checkIfSteady();
 
+        frame++;
         t += testSolver.dt();
-        testSolver.writeDataToFiles(t);
+        if (frame % plottingFactor == 0)
+        {
+            testSolver.writeDataToFiles(t);
+        }
     }
 
     return 0;
