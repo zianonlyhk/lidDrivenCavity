@@ -40,6 +40,16 @@ void UnsteadySolver::setCompDomainVec(const Eigen::VectorXd &uVec, const Eigen::
     m_pVec = pVec;
 }
 
+void UnsteadySolver::setOutputDataAttributes(std::string simulationName, std::string repoDir)
+{
+    m_simulationName = simulationName;
+    m_repoDir = repoDir;
+
+    m_uResults.open(simulationName + (std::string) "data/" + repoDir + (std::string) "_uResults.dat");
+    m_vResults.open(simulationName + (std::string) "data/" + repoDir + (std::string) "_vResults.dat");
+    m_pResults.open(simulationName + (std::string) "data/" + repoDir + (std::string) "_pResults.dat");
+}
+
 int UnsteadySolver::getVecIdxU(int i, int j)
 {
     return j * (m_N - 1) + i;
@@ -435,7 +445,7 @@ void UnsteadySolver::solveForU_Next()
                 pGradX = 0.0;
             }
 
-            m_uVec(getVecIdxP(i, j)) += m_dt * pGradX;
+            m_uVec(getVecIdxU(i, j)) += m_dt * pGradX;
         }
     }
 
@@ -466,7 +476,7 @@ void UnsteadySolver::solveForV_Next()
                 pGradY = 0.0;
             }
 
-            m_vVec(getVecIdxP(i, j)) += m_dt * pGradY;
+            m_vVec(getVecIdxV(i, j)) += m_dt * pGradY;
         }
     }
 
@@ -486,11 +496,52 @@ void UnsteadySolver::checkIfSteady()
     double uContribution = abs(m_uVecDiff.lpNorm<Eigen::Infinity>() / m_uVec.lpNorm<Eigen::Infinity>());
     double vContribution = abs(m_vVecDiff.lpNorm<Eigen::Infinity>() / m_vVec.lpNorm<Eigen::Infinity>());
 
-    std::cout << uContribution << " and " << vContribution << std::endl;
-
     if (uContribution + vContribution < m_tol)
     {
         m_reachedSteady = true;
+    }
+}
+
+void UnsteadySolver::writeDataToFiles(double time)
+{
+    // writing x velocity
+    for (int j = 0; j < m_N; ++j)
+    {
+        for (int i = 0; i < m_N - 1; ++i)
+        {
+            m_uResults << time << ' ' << m_x0 + m_dx / 2 + i * m_dx << ' ' << m_y0 + j * m_dx << ' ' << m_uVec(getVecIdxU(i, j)) << std::endl;
+        }
+        m_uResults << std::endl;
+    }
+    m_uResults << std::endl;
+
+    // writing y velocity
+    for (int j = 0; j < m_N - 1; ++j)
+    {
+        for (int i = 0; i < m_N; ++i)
+        {
+            m_vResults << time << ' ' << m_x0 + i * m_dx << ' ' << m_y0 + m_dx / 2 + j * m_dx << ' ' << m_vVec(getVecIdxV(i, j)) << std::endl;
+        }
+        m_vResults << std::endl;
+    }
+    m_vResults << std::endl;
+
+    // writing p
+    for (int j = 0; j < m_N; ++j)
+    {
+        for (int i = 0; i < m_N; ++i)
+        {
+            m_pResults << time << ' ' << m_x0 + i * m_dx << ' ' << m_y0 + j * m_dx << ' ' << m_pVec(getVecIdxP(i, j)) << std::endl;
+        }
+        m_pResults << std::endl;
+    }
+    m_pResults << std::endl;
+
+    if (m_reachedSteady)
+    {
+        m_uResults.close();
+        m_vResults.close();
+        m_pResults.close();
     }
 }
 

@@ -93,5 +93,6 @@ Temporary Items
 
 bin/*
 obj/*
+data/*
 debug/*
 test/*

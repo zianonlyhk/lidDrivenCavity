@@ -31,6 +31,8 @@ public:
     UnsteadySolver(int N, double tStop, double cfl, double re, double a);
     // initial conditions part 2:
     void setCompDomainVec(const Eigen::VectorXd &uVec, const Eigen::VectorXd &vVec, const Eigen::VectorXd &pVec);
+    // other attributes
+    void setOutputDataAttributes(std::string simulationName, std::string repoDir);
 
     // PUBLIC METHODS
 
@@ -51,6 +53,8 @@ public:
     void solveForV_Next(); // step 3 update fieldVecV again
 
     void checkIfSteady();
+
+    void writeDataToFiles(double time);
 
     // ACCESSING PRIVATE MEMBERS
     const double tStop();
@@ -77,6 +81,12 @@ private:
     double m_tStart = 0.0;
     double m_tStop;
     bool m_reachedSteady = false;
+
+    std::string m_repoDir;
+    std::string m_simulationName;
+    std::ofstream m_uResults;
+    std::ofstream m_vResults;
+    std::ofstream m_pResults;
 
     // DYNAMIC ATTRIBUTES
     // -----------------------------
