@@ -22,7 +22,8 @@ UnsteadySolver::UnsteadySolver(int N, double tStop, double cfl, double re, doubl
 
     m_dx = (m_x1 - m_x0) / m_N;
 
-    m_dt = m_re * m_dx * m_dx;
+    m_dt = 100 * m_dx / m_re;
+    // m_dt = m_re * m_dx * m_dx;
 
     m_uLoadVec = Eigen::VectorXd::Zero(m_N * (m_N - 1));
     m_vLoadVec = Eigen::VectorXd::Zero(m_N * (m_N - 1));
@@ -111,6 +112,8 @@ void UnsteadySolver::constructMatrixA_p()
 {
     Eigen::MatrixXd B = Eigen::MatrixXd::Zero(m_N, m_N);
     B.diagonal() = -4 * Eigen::VectorXd::Ones(m_N);
+    B(0, 0) = -3;
+    B(m_N - 1, m_N - 1) = -3;
     B.diagonal(1) = Eigen::VectorXd::Ones(m_N - 1);
     B.diagonal(-1) = Eigen::VectorXd::Ones(m_N - 1);
 
@@ -123,9 +126,21 @@ void UnsteadySolver::constructMatrixA_p()
     {
         A.block(i * m_N, i * m_N, m_N, m_N) = B;
         if (i > 0)
+        {
             A.block((i - 1) * m_N, i * m_N, m_N, m_N) = A_viceDiag;
+        }
+        else
+        {
+            A.block(i * m_N, i * m_N, m_N, m_N) += A_viceDiag;
+        }
         if (i < m_N - 1)
+        {
             A.block((i + 1) * m_N, i * m_N, m_N, m_N) = A_viceDiag;
+        }
+        else
+        {
+            A.block(i * m_N, i * m_N, m_N, m_N) += A_viceDiag;
+        }
     }
 
     m_sMatrixA_p = A.sparseView();
@@ -202,13 +217,13 @@ void UnsteadySolver::constructLoadVecU()
             {
                 nokia1 = 0.0;
                 nokia3 = 0.0;
-                nokia7 = m_vVec(getVecIdxV(i - 1, j));
-                nokia9 = m_vVec(getVecIdxV(i - 1, j + 1));
+                nokia7 = m_vVec(getVecIdxV(i, j - 1));
+                nokia9 = m_vVec(getVecIdxV(i + 1, j - 1));
             }
             else // bottom
             {
                 nokia1 = m_vVec(getVecIdxV(i, j));
-                nokia3 = m_vVec(getVecIdxV(i, j + 1));
+                nokia3 = m_vVec(getVecIdxV(i + 1, j));
                 nokia7 = 0.0;
                 nokia9 = 0.0;
             }
@@ -401,7 +416,7 @@ void UnsteadySolver::constructLoadVecP()
                 west = 0.0;
             }
 
-            m_pLoadVec(getVecIdxP(i, j)) = m_dx * (east - west + north - south);
+            m_pLoadVec(getVecIdxP(i, j)) = m_dx / m_dt * (east - west + north - south);
         }
     }
 
@@ -423,7 +438,7 @@ void UnsteadySolver::solveForP_Next()
     bool db = false;
     if (db)
     {
-        std::cout << m_vVec << std::endl;
+        std::cout << m_pVec << std::endl;
     }
 }
 
@@ -445,7 +460,7 @@ void UnsteadySolver::solveForU_Next()
                 pGradX = 0.0;
             }
 
-            m_uVec(getVecIdxU(i, j)) += m_dt * pGradX;
+            m_uVec(getVecIdxU(i, j)) -= m_dt * pGradX;
         }
     }
 
@@ -476,7 +491,7 @@ void UnsteadySolver::solveForV_Next()
                 pGradY = 0.0;
             }
 
-            m_vVec(getVecIdxV(i, j)) += m_dt * pGradY;
+            m_vVec(getVecIdxV(i, j)) -= m_dt * pGradY;
         }
     }
 
@@ -489,7 +504,7 @@ void UnsteadySolver::solveForV_Next()
     }
 }
 
-void UnsteadySolver::checkIfSteady()
+void UnsteadySolver::checkIfBreak(double time)
 {
     m_uVecDiff = m_uVec - m_uVecPrev;
     m_vVecDiff = m_vVec - m_vVecPrev;
@@ -497,6 +512,11 @@ void UnsteadySolver::checkIfSteady()
     double vContribution = abs(m_vVecDiff.lpNorm<Eigen::Infinity>() / m_vVec.lpNorm<Eigen::Infinity>());
 
     if (uContribution + vContribution < m_tol)
+    {
+        m_reachedSteady = true;
+    }
+
+    if (time > m_tStop)
     {
         m_reachedSteady = true;
     }

@@ -1,10 +1,10 @@
 N 20
-tStop 0.25
-cfl 0.8
-re 0.6
+tStop 10
+cfl 0.9
+re 100
 a 1.0
 
-plottingFactor 10
+plottingFactor 20
 
 repoName /Users/zianhuang/Room214N/dev/mphil/lidDrivenCavity/
 simulationName testSolver

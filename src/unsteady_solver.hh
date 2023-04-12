@@ -52,7 +52,7 @@ public:
     void solveForU_Next(); // step 3 update fieldVecU again
     void solveForV_Next(); // step 3 update fieldVecV again
 
-    void checkIfSteady();
+    void checkIfBreak(double time);
 
     void writeDataToFiles(double time);
 

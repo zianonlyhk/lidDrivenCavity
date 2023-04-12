@@ -11,8 +11,7 @@
 
 CPP_COMPILER = g++
 ADDITIONAL_LIB_PATH = -I/opt/homebrew/include/eigen3/
-# OPTIMISATION = -O3
-OPTIMISATION = -O0
+OPTIMISATION = -O3
 
 OBJECTS = obj/main.o obj/unsteady_solver.o
 

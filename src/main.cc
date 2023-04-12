@@ -111,7 +111,7 @@ int main()
         testSolver.solveForU_Next();
         testSolver.solveForV_Next();
 
-        testSolver.checkIfSteady();
+        testSolver.checkIfBreak(t);
 
         frame++;
         t += testSolver.dt();

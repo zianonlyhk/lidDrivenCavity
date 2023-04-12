@@ -48,3 +48,20 @@ do for [i=1:int(STATS_blocks)-1] {
     set xrange [GPVAL_DATA_X_MIN:GPVAL_DATA_X_MAX]
     set yrange [GPVAL_DATA_Y_MIN:GPVAL_DATA_Y_MAX]
 }
+
+reset session
+
+cd '/Users/zianhuang/Room214N/dev/mphil/lidDrivenCavity/data'
+
+set terminal gif animate delay 5
+set output 'gif/arrowPlot.gif'
+set xyplane at 0
+set xlabel "x"
+set ylabel "y"
+stats 'testSolver_vecResults.dat' using 4 nooutput
+set cbrange [STATS_min:STATS_max]
+do for [i=1:int(STATS_blocks)-1] {
+    plot "testSolver_vecResults.dat" index (i-1) using 1:2:3:4 with vectors filled head lw 3 notitle
+    set xrange [GPVAL_DATA_X_MIN:GPVAL_DATA_X_MAX]
+    set yrange [GPVAL_DATA_Y_MIN:GPVAL_DATA_Y_MAX]
+}
