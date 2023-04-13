@@ -22,8 +22,11 @@ UnsteadySolver::UnsteadySolver(int N, double tStop, double cfl, double re, doubl
 
     m_dx = (m_x1 - m_x0) / m_N;
 
-    m_dt = 100 * m_dx / m_re;
+    m_dt = 500 * m_dx / m_re;
     // m_dt = m_re * m_dx * m_dx;
+
+    m_vortVec = Eigen::VectorXd::Zero((m_N - 1) * (m_N - 1));
+    m_streamFuncVec = Eigen::VectorXd::Zero((m_N - 1) * (m_N - 1));
 
     m_uLoadVec = Eigen::VectorXd::Zero(m_N * (m_N - 1));
     m_vLoadVec = Eigen::VectorXd::Zero(m_N * (m_N - 1));
@@ -49,6 +52,8 @@ void UnsteadySolver::setOutputDataAttributes(std::string simulationName, std::st
     m_uResults.open(simulationName + (std::string) "data/" + repoDir + (std::string) "_uResults.dat");
     m_vResults.open(simulationName + (std::string) "data/" + repoDir + (std::string) "_vResults.dat");
     m_pResults.open(simulationName + (std::string) "data/" + repoDir + (std::string) "_pResults.dat");
+    m_vecResults.open(simulationName + (std::string) "data/" + repoDir + (std::string) "_vecResults.dat");
+    m_streamFuncResults.open(simulationName + (std::string) "data/" + repoDir + (std::string) "_streamFuncResults.dat");
 }
 
 int UnsteadySolver::getVecIdxU(int i, int j)
@@ -155,6 +160,35 @@ void UnsteadySolver::constructMatrixA_p()
         std::cout << std::endl;
         std::cout << m_sMatrixA_p << std::endl;
     }
+}
+
+void UnsteadySolver::constructMatrixA_streamFunc()
+{
+    Eigen::MatrixXd B = Eigen::MatrixXd::Zero(m_N - 1, m_N - 1);
+    B.diagonal() = -4 * Eigen::VectorXd::Ones(m_N - 1);
+    B.diagonal(1) = Eigen::VectorXd::Ones(m_N - 2);
+    B.diagonal(-1) = Eigen::VectorXd::Ones(m_N - 2);
+
+    Eigen::MatrixXd A_viceDiag = Eigen::MatrixXd::Zero(m_N - 1, m_N - 1);
+    A_viceDiag.diagonal() = Eigen::VectorXd::Ones(m_N - 1);
+
+    Eigen::MatrixXd A = Eigen::MatrixXd::Zero((m_N - 1) * (m_N - 1), (m_N - 1) * (m_N - 1));
+
+    for (int i = 0; i < m_N - 1; i++)
+    {
+        A.block(i * (m_N - 1), i * (m_N - 1), (m_N - 1), (m_N - 1)) = B;
+        if (i > 0)
+        {
+            A.block((i - 1) * (m_N - 1), i * (m_N - 1), (m_N - 1), (m_N - 1)) = A_viceDiag;
+        }
+        if (i < m_N - 2)
+        {
+            A.block((i + 1) * (m_N - 1), i * (m_N - 1), (m_N - 1), (m_N - 1)) = A_viceDiag;
+        }
+    }
+
+    m_sMatrixA_streamFunc = A.sparseView();
+    m_solverStreamFunc.compute(m_sMatrixA_streamFunc);
 }
 
 void UnsteadySolver::constructLoadVecU()
@@ -504,6 +538,22 @@ void UnsteadySolver::solveForV_Next()
     }
 }
 
+void UnsteadySolver::constructVorticityVec()
+{
+    for (int i = 0; i < m_N - 1; ++i)
+    {
+        for (int j = 0; j < m_N - 1; ++j)
+        {
+            m_vortVec((m_N - 1) * j + i) = -(m_vVec(getVecIdxV(i + 1, j)) - m_vVec(getVecIdxV(i, j)) - m_uVec(getVecIdxU(i, j + 1)) + m_uVec(getVecIdxU(i, j)));
+        }
+    }
+}
+
+void UnsteadySolver::solveForStreamFunc()
+{
+    m_streamFuncVec = m_solverStreamFunc.solve(m_vortVec);
+}
+
 void UnsteadySolver::checkIfBreak(double time)
 {
     m_uVecDiff = m_uVec - m_uVecPrev;
@@ -557,11 +607,40 @@ void UnsteadySolver::writeDataToFiles(double time)
     }
     m_pResults << std::endl;
 
+    // writing arrows
+    double currX, currY;
+    for (int j = 0; j < m_N - 1; j += 2)
+    {
+        for (int i = 0; i < m_N - 1; i += 2)
+        {
+            currX = m_x0 + 3 * m_dx / 4 + i * m_dx;
+            currY = m_y0 + 3 * m_dx / 4 + j * m_dx;
+            m_vecResults << time << ' ' << currX << ' ' << currY << ' ' << 0.1 * m_uVec(getVecIdxU(i, j)) << ' ' << 0.1 * m_vVec(getVecIdxV(i, j)) << std::endl;
+        }
+        m_vecResults << std::endl;
+    }
+    m_vecResults << std::endl;
+
+    // writing streamFunc
+    for (int j = 0; j < m_N - 1; ++j)
+    {
+        for (int i = 0; i < m_N - 1; ++i)
+        {
+            currX = m_x0 + 3 * m_dx / 4 + i * m_dx;
+            currY = m_y0 + 3 * m_dx / 4 + j * m_dx;
+            m_streamFuncResults << time << ' ' << currX << ' ' << currY << ' ' << m_streamFuncVec((m_N - 1) * j + i) << std::endl;
+        }
+        m_streamFuncResults << std::endl;
+    }
+    m_streamFuncResults << std::endl;
+
     if (m_reachedSteady)
     {
         m_uResults.close();
         m_vResults.close();
         m_pResults.close();
+        m_vecResults.close();
+        m_streamFuncResults.close();
     }
 }
 

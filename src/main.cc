@@ -93,6 +93,7 @@ int main()
     testSolver.setOutputDataAttributes(repoName, simulationName);
     testSolver.constructMatrixA_uv();
     testSolver.constructMatrixA_p();
+    testSolver.constructMatrixA_streamFunc();
 
     double t = 0.0;
     int frame = 0;
@@ -110,6 +111,9 @@ int main()
 
         testSolver.solveForU_Next();
         testSolver.solveForV_Next();
+
+        testSolver.constructVorticityVec();
+        testSolver.solveForStreamFunc();
 
         testSolver.checkIfBreak(t);
 

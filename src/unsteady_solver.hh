@@ -41,16 +41,22 @@ public:
     int getVecIdxP(int i, int j);
     // solving the linear system at each time step
     void constructMatrixA_uv();
-    void constructMatrixA_p(); // only once
+    void constructMatrixA_p();
+    void constructMatrixA_streamFunc();
+
     void constructLoadVecU();
     void constructLoadVecV();
     void constructLoadVecP();
+
+    void constructVorticityVec();
 
     void solveForU_Star(); // step 1 update fieldVecU
     void solveForV_Star(); // step 1 update fieldVecV
     void solveForP_Next(); // step 2 update fieldVecP
     void solveForU_Next(); // step 3 update fieldVecU again
     void solveForV_Next(); // step 3 update fieldVecV again
+
+    void solveForStreamFunc();
 
     void checkIfBreak(double time);
 
@@ -65,7 +71,7 @@ private:
     // CONSTANT ATTRIBUTES
     // -----------------------------
 
-    double m_tol = 1e-5;
+    double m_tol = 5e-2;
     double m_re;
     double m_cfl;
     double m_a;
@@ -87,6 +93,8 @@ private:
     std::ofstream m_uResults;
     std::ofstream m_vResults;
     std::ofstream m_pResults;
+    std::ofstream m_vecResults;
+    std::ofstream m_streamFuncResults;
 
     // DYNAMIC ATTRIBUTES
     // -----------------------------
@@ -99,14 +107,18 @@ private:
     // sparse matrices at each time step
     Eigen::SparseMatrix<double> m_sMatrixA_uv;
     Eigen::SparseMatrix<double> m_sMatrixA_p;
+    Eigen::SparseMatrix<double> m_sMatrixA_streamFunc;
     // sparse matrix solvers
     Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverUV;
     Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverP;
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverStreamFunc;
 
     // field vectors at each step
     Eigen::VectorXd m_uVec;
     Eigen::VectorXd m_vVec;
     Eigen::VectorXd m_pVec;
+    Eigen::VectorXd m_vortVec;
+    Eigen::VectorXd m_streamFuncVec;
 
     // previous time step field vectors
     Eigen::VectorXd m_uVecPrev;
