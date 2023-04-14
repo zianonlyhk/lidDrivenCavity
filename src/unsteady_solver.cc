@@ -22,7 +22,7 @@ UnsteadySolver::UnsteadySolver(int N, double tStop, double cfl, double re, doubl
 
     m_dx = (m_x1 - m_x0) / m_N;
 
-    m_dt = 500 * m_dx / m_re;
+    m_dt = 100 * m_dx / m_re;
     // m_dt = m_re * m_dx * m_dx;
 
     m_vortVec = Eigen::VectorXd::Zero((m_N - 1) * (m_N - 1));
@@ -561,8 +561,12 @@ void UnsteadySolver::checkIfBreak(double time)
     double uContribution = abs(m_uVecDiff.lpNorm<Eigen::Infinity>() / m_uVec.lpNorm<Eigen::Infinity>());
     double vContribution = abs(m_vVecDiff.lpNorm<Eigen::Infinity>() / m_vVec.lpNorm<Eigen::Infinity>());
 
-    if (uContribution + vContribution < m_tol)
+    if (uContribution + vContribution < m_tol || std::isnan(uContribution + vContribution))
     {
+        if (std::isnan(uContribution + vContribution))
+        {
+            std::cout << uContribution + vContribution << " encountered!" << std::endl;
+        }
         m_reachedSteady = true;
     }
 
@@ -608,14 +612,17 @@ void UnsteadySolver::writeDataToFiles(double time)
     m_pResults << std::endl;
 
     // writing arrows
-    double currX, currY;
+    double currX, currY, xVel, yVel, velMag;
     for (int j = 0; j < m_N - 1; j += 2)
     {
         for (int i = 0; i < m_N - 1; i += 2)
         {
             currX = m_x0 + 3 * m_dx / 4 + i * m_dx;
             currY = m_y0 + 3 * m_dx / 4 + j * m_dx;
-            m_vecResults << time << ' ' << currX << ' ' << currY << ' ' << 0.1 * m_uVec(getVecIdxU(i, j)) << ' ' << 0.1 * m_vVec(getVecIdxV(i, j)) << std::endl;
+            xVel = m_uVec(getVecIdxU(i, j));
+            yVel = m_vVec(getVecIdxV(i, j));
+            velMag = sqrt(xVel * xVel + yVel * yVel);
+            m_vecResults << time << ' ' << currX << ' ' << currY << ' ' << 0.015 * xVel / velMag << ' ' << 0.015 * yVel / velMag << std::endl;
         }
         m_vecResults << std::endl;
     }

@@ -71,7 +71,7 @@ private:
     // CONSTANT ATTRIBUTES
     // -----------------------------
 
-    double m_tol = 5e-2;
+    double m_tol = 1e-5;
     double m_re;
     double m_cfl;
     double m_a;

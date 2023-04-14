@@ -121,6 +121,7 @@ int main()
         t += testSolver.dt();
         if (frame % plottingFactor == 0)
         {
+            std::cout << "t " << t << "/" << testSolver.tStop() << std::endl;
             testSolver.writeDataToFiles(t);
         }
     }
