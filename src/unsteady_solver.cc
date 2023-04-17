@@ -22,8 +22,8 @@ UnsteadySolver::UnsteadySolver(int N, double tStop, double cfl, double re, doubl
 
     m_dx = (m_x1 - m_x0) / m_N;
 
-    // m_dt = 100 * m_dx / m_re;
-    m_dt = m_re * m_dx * m_dx;
+    m_dt = 100 * m_dx / m_re;
+    // m_dt = m_re * m_dx * m_dx;
 
     m_vortVec = Eigen::VectorXd::Zero((m_N - 1) * (m_N - 1));
     m_streamFuncVec = Eigen::VectorXd::Zero((m_N - 1) * (m_N - 1));
@@ -355,7 +355,7 @@ void UnsteadySolver::constructLoadVecV()
                 nokia9 = m_uVec(getVecIdxU(i, j));
             }
 
-            m_vLoadVec(getVecIdxV(i, j)) = centre - m_dt / m_dx / 2 * (centre * (east - west) + (north - south) / 4 * (nokia1 + nokia3 + nokia7 + nokia9));
+            m_vLoadVec(getVecIdxV(i, j)) = centre - m_dt / m_dx / 2 * (centre * (north - south) + (east - west) / 4 * (nokia1 + nokia3 + nokia7 + nokia9));
 
             if (i == m_N - 1) // right
             {
@@ -561,10 +561,10 @@ void UnsteadySolver::checkIfBreak(double time)
     double uContribution = abs(m_uVecDiff.lpNorm<Eigen::Infinity>() / m_uVec.lpNorm<Eigen::Infinity>());
     double vContribution = abs(m_vVecDiff.lpNorm<Eigen::Infinity>() / m_vVec.lpNorm<Eigen::Infinity>());
 
-    if (std::isnan(uContribution + vContribution))
-    {
-        std::cout << uContribution + vContribution << " encountered!" << std::endl;
-    }
+    // if (std::isnan(uContribution + vContribution))
+    // {
+    //     std::cout << uContribution + vContribution << " encountered!" << std::endl;
+    // }
 
     if (uContribution + vContribution < m_tol)
     {
