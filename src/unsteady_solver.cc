@@ -22,8 +22,8 @@ UnsteadySolver::UnsteadySolver(int N, double tStop, double cfl, double re, doubl
 
     m_dx = (m_x1 - m_x0) / m_N;
 
-    m_dt = 100 * m_dx / m_re;
-    // m_dt = m_re * m_dx * m_dx;
+    // m_dt = 100 * m_dx / m_re;
+    m_dt = m_re * m_dx * m_dx;
 
     m_vortVec = Eigen::VectorXd::Zero((m_N - 1) * (m_N - 1));
     m_streamFuncVec = Eigen::VectorXd::Zero((m_N - 1) * (m_N - 1));
@@ -561,12 +561,13 @@ void UnsteadySolver::checkIfBreak(double time)
     double uContribution = abs(m_uVecDiff.lpNorm<Eigen::Infinity>() / m_uVec.lpNorm<Eigen::Infinity>());
     double vContribution = abs(m_vVecDiff.lpNorm<Eigen::Infinity>() / m_vVec.lpNorm<Eigen::Infinity>());
 
-    if (uContribution + vContribution < m_tol || std::isnan(uContribution + vContribution))
+    if (std::isnan(uContribution + vContribution))
     {
-        if (std::isnan(uContribution + vContribution))
-        {
-            std::cout << uContribution + vContribution << " encountered!" << std::endl;
-        }
+        std::cout << uContribution + vContribution << " encountered!" << std::endl;
+    }
+
+    if (uContribution + vContribution < m_tol)
+    {
         m_reachedSteady = true;
     }
 
