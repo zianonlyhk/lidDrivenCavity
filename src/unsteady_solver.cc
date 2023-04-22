@@ -31,6 +31,12 @@ UnsteadySolver::UnsteadySolver(int N, double tStop, double cfl, double re, doubl
     m_uLoadVec = Eigen::VectorXd::Zero(m_N * (m_N - 1));
     m_vLoadVec = Eigen::VectorXd::Zero(m_N * (m_N - 1));
     m_pLoadVec = Eigen::VectorXd::Zero(m_N * m_N);
+    m_tempLoadVec = Eigen::VectorXd::Zero(m_N * m_N);
+}
+void UnsteadySolver::setTemp(double initTemp, double tempDiff)
+{
+    m_initTemp = initTemp;
+    m_tempDiff = tempDiff;
 }
 
 void UnsteadySolver::setCompDomainVec(const Eigen::VectorXd &uVec, const Eigen::VectorXd &vVec, const Eigen::VectorXd &pVec)
@@ -44,6 +50,18 @@ void UnsteadySolver::setCompDomainVec(const Eigen::VectorXd &uVec, const Eigen::
     m_pVec = pVec;
 }
 
+void UnsteadySolver::setCompDomainVec(const Eigen::VectorXd &uVec, const Eigen::VectorXd &vVec, const Eigen::VectorXd &pVec, const Eigen::VectorXd &tempVec)
+{
+    m_uVec = uVec;
+    m_uVecPrev = uVec;
+
+    m_vVec = vVec;
+    m_vVecPrev = vVec;
+
+    m_pVec = pVec;
+    m_tempVec = tempVec;
+}
+
 void UnsteadySolver::setOutputDataAttributes(std::string simulationName, std::string repoDir)
 {
     m_simulationName = simulationName;
@@ -52,6 +70,7 @@ void UnsteadySolver::setOutputDataAttributes(std::string simulationName, std::st
     m_uResults.open(simulationName + (std::string) "data/" + repoDir + (std::string) "_uResults.dat");
     m_vResults.open(simulationName + (std::string) "data/" + repoDir + (std::string) "_vResults.dat");
     m_pResults.open(simulationName + (std::string) "data/" + repoDir + (std::string) "_pResults.dat");
+    m_tempResults.open(simulationName + (std::string) "data/" + repoDir + (std::string) "_tempResults.dat");
     m_vecResults.open(simulationName + (std::string) "data/" + repoDir + (std::string) "_vecResults.dat");
     m_streamFuncResults.open(simulationName + (std::string) "data/" + repoDir + (std::string) "_streamFuncResults.dat");
 }
@@ -162,6 +181,61 @@ void UnsteadySolver::constructMatrixA_p()
     }
 }
 
+void UnsteadySolver::constructMatrixA_temp()
+{
+    // new coefficient
+    double alpha = (m_rho * m_cp * m_lambda / m_a / m_l) * m_dt / m_dx / m_dx;
+
+    Eigen::MatrixXd B = Eigen::MatrixXd::Zero(m_N, m_N);
+    B.diagonal() = -4 * Eigen::VectorXd::Ones(m_N);
+    B.diagonal(1) = Eigen::VectorXd::Ones(m_N - 1);
+    B.diagonal(-1) = Eigen::VectorXd::Ones(m_N - 1);
+
+    Eigen::MatrixXd A_diag = Eigen::MatrixXd::Zero(m_N, m_N);
+    A_diag.diagonal() = Eigen::VectorXd::Ones(m_N);
+    A_diag = A_diag - alpha * B;
+
+    Eigen::MatrixXd A_viceDiag = Eigen::MatrixXd::Zero(m_N, m_N);
+    A_viceDiag.diagonal() = -alpha * Eigen::VectorXd::Ones(m_N);
+
+    Eigen::MatrixXd A = Eigen::MatrixXd::Zero(m_N * m_N, m_N * m_N);
+
+    for (int i = 0; i < m_N; i++)
+    {
+        A.block(i * m_N, i * m_N, m_N, m_N) = A_diag;
+        if (i > 0)
+        {
+            A.block((i - 1) * m_N, i * m_N, m_N, m_N) = A_viceDiag;
+        }
+        else
+        {
+            A.block(i * m_N, i * m_N, m_N, m_N) += A_viceDiag;
+        }
+        if (i < m_N - 1)
+        {
+            A.block((i + 1) * m_N, i * m_N, m_N, m_N) = A_viceDiag;
+        }
+        else
+        {
+            A.block(i * m_N, i * m_N, m_N, m_N) += A_viceDiag;
+        }
+    }
+
+    m_sMatrixA_temp = A.sparseView();
+    m_solverTemp.compute(m_sMatrixA_temp);
+
+    // DEBUG
+    // bool db = true;
+    bool db = false;
+    if (db)
+    {
+        std::cout << "alpha is " << alpha << std::endl;
+        std::cout << A << std::endl;
+        std::cout << std::endl;
+        std::cout << m_sMatrixA_temp << std::endl;
+    }
+}
+
 void UnsteadySolver::constructMatrixA_streamFunc()
 {
     Eigen::MatrixXd B = Eigen::MatrixXd::Zero(m_N - 1, m_N - 1);
@@ -189,6 +263,112 @@ void UnsteadySolver::constructMatrixA_streamFunc()
 
     m_sMatrixA_streamFunc = A.sparseView();
     m_solverStreamFunc.compute(m_sMatrixA_streamFunc);
+}
+
+void UnsteadySolver::constructLoadVecTemp()
+{
+    double alpha = (m_rho * m_cp * m_lambda / m_a / m_l) * m_dt / m_dx / m_dx;
+
+    double centre, north, south, east, west;
+    double uLeft, uRight, vUp, vDown;
+
+    for (int i = 0; i < m_N; ++i)
+    {
+        for (int j = 0; j < m_N; ++j)
+        {
+            centre = m_tempVec(getVecIdxP(i, j));
+
+            // Direction ###
+            if (j < m_N - 1) // if there is anything up
+            {
+                north = m_tempVec(getVecIdxP(i, j + 1));
+            }
+            else // top boundary conditions
+            {
+                north = centre;
+            }
+
+            if (j > 0)
+            {
+                south = m_tempVec(getVecIdxP(i, j - 1));
+            }
+            else // bottom
+            {
+                south = centre;
+            }
+
+            if (i < m_N - 1)
+            {
+                east = m_tempVec(getVecIdxP(i + 1, j));
+            }
+            else // right
+            {
+                east = m_initTemp - m_tempDiff;
+            }
+
+            if (i > 0)
+            {
+                west = m_tempVec(getVecIdxP(i - 1, j));
+            }
+            else // left
+            {
+                west = m_initTemp + m_tempDiff;
+            }
+
+            // u components ###
+            if (i < m_N - 1 && i > 0) // in the middle
+            {
+                uLeft = m_uVec(getVecIdxU(i - 1, j));
+                uRight = m_uVec(getVecIdxU(i, j));
+            }
+            else if (i == m_N - 1) // right
+            {
+                uLeft = m_uVec(getVecIdxU(i - 1, j));
+                uRight = 0.0;
+            }
+            else // left
+            {
+                uLeft = 0.0;
+                uRight = m_uVec(getVecIdxU(i, j));
+            }
+
+            // v components ###
+            if (j < m_N - 1 && j > 0) // in the middle
+            {
+                vDown = m_vVec(getVecIdxV(i, j - 1));
+                vUp = m_vVec(getVecIdxV(i, j));
+            }
+            else if (j == m_N - 1) // up
+            {
+                vDown = m_vVec(getVecIdxV(i, j - 1));
+                vUp = 0.0;
+            }
+            else // down
+            {
+                vDown = 0.0;
+                vUp = m_vVec(getVecIdxV(i, j));
+            }
+
+            m_tempLoadVec(getVecIdxP(i, j)) = centre - m_dt / m_dx / 2 * (0.5 * (uLeft + uRight) * (east - west) + 0.5 * (vUp + vDown) * (north - south));
+
+            if (i == 0) // left
+            {
+                m_tempLoadVec(getVecIdxP(i, j)) += alpha * (m_initTemp + m_tempDiff);
+            }
+            if (i == m_N - 1) // right
+            {
+                m_tempLoadVec(getVecIdxP(i, j)) += alpha * (m_initTemp - m_tempDiff);
+            }
+        }
+    }
+
+    // DEBUG
+    // bool db = true;
+    bool db = false;
+    if (db)
+    {
+        std::cout << m_tempLoadVec << std::endl;
+    }
 }
 
 void UnsteadySolver::constructLoadVecU()
@@ -377,6 +557,19 @@ void UnsteadySolver::constructLoadVecV()
     }
 }
 
+void UnsteadySolver::solveForTemp_Next()
+{
+    m_tempVec = m_solverTemp.solve(m_tempLoadVec);
+
+    // DEBUG
+    // bool db = true;
+    bool db = false;
+    if (db)
+    {
+        std::cout << m_tempVec << std::endl;
+    }
+}
+
 void UnsteadySolver::solveForU_Star()
 {
     m_uVecPrev = m_uVec;
@@ -409,48 +602,62 @@ void UnsteadySolver::constructLoadVecP()
 {
     double north, south, east, west;
 
+    double tempScaling = m_lambda / m_cp / m_rho / m_a / m_l;
+    double tempC, tempN, tempS, tempR, tempL;
+
     for (int i = 0; i < m_N; ++i)
     {
         for (int j = 0; j < m_N; ++j)
         {
+            tempC = m_tempVec(getVecIdxP(i, j));
+
             // Direction ###
             if (j < m_N - 1)
             {
                 north = m_vVec(getVecIdxV(i, j));
+                tempN = m_tempVec(getVecIdxP(i, j + 1));
             }
             else // top
             {
                 north = 0.0;
+                tempN = tempC;
             }
 
             if (j > 0)
             {
                 south = m_vVec(getVecIdxV(i, j - 1));
+                tempS = m_tempVec(getVecIdxP(i, j - 1));
             }
             else // bottom
             {
                 south = 0.0;
+                tempS = tempC;
             }
 
             if (i < m_N - 1)
             {
                 east = m_uVec(getVecIdxU(i, j));
+                tempR = m_tempVec(getVecIdxP(i + 1, j));
             }
             else // right
             {
                 east = 0.0;
+                tempR = m_initTemp - m_tempDiff;
             }
 
             if (i > 0)
             {
                 west = m_uVec(getVecIdxU(i - 1, j));
+                tempL = m_tempVec(getVecIdxP(i - 1, j));
             }
             else // left
             {
                 west = 0.0;
+                tempL = m_initTemp + m_tempDiff;
             }
 
-            m_pLoadVec(getVecIdxP(i, j)) = m_dx / m_dt * (east - west + north - south);
+            m_pLoadVec(getVecIdxP(i, j)) = m_dx / m_dt * (east - west + north - south) - 1 / m_dt * tempScaling / tempC * (tempN + tempS + tempR + tempL - 4 * tempC);
+            // m_pLoadVec(getVecIdxP(i, j)) = m_dx / m_dt * (east - west + north - south);
         }
     }
 
@@ -561,10 +768,10 @@ void UnsteadySolver::checkIfBreak(double time)
     double uContribution = abs(m_uVecDiff.lpNorm<Eigen::Infinity>() / m_uVec.lpNorm<Eigen::Infinity>());
     double vContribution = abs(m_vVecDiff.lpNorm<Eigen::Infinity>() / m_vVec.lpNorm<Eigen::Infinity>());
 
-    // if (std::isnan(uContribution + vContribution))
-    // {
-    //     std::cout << uContribution + vContribution << " encountered!" << std::endl;
-    // }
+    if (std::isnan(uContribution + vContribution))
+    {
+        std::cout << uContribution + vContribution << " encountered!" << std::endl;
+    }
 
     if (uContribution + vContribution < m_tol)
     {
@@ -612,6 +819,17 @@ void UnsteadySolver::writeDataToFiles(double time)
     }
     m_pResults << std::endl;
 
+    // writing temp
+    for (int j = 0; j < m_N; ++j)
+    {
+        for (int i = 0; i < m_N; ++i)
+        {
+            m_tempResults << time << ' ' << m_x0 + i * m_dx << ' ' << m_y0 + j * m_dx << ' ' << m_tempVec(getVecIdxP(i, j)) << std::endl;
+        }
+        m_tempResults << std::endl;
+    }
+    m_tempResults << std::endl;
+
     // writing arrows
     double currX, currY, xVel, yVel, velMag;
     for (int j = 0; j < m_N - 1; j += 2)
@@ -647,6 +865,7 @@ void UnsteadySolver::writeDataToFiles(double time)
         m_uResults.close();
         m_vResults.close();
         m_pResults.close();
+        m_tempResults.close();
         m_vecResults.close();
         m_streamFuncResults.close();
     }

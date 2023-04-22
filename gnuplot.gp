@@ -104,3 +104,20 @@ do for [i=1:int(STATS_blocks)-1] {
     plot 'testSolver_streamFuncResults.dat' index (i-1) using 2:3:4 with image palette notitle,\
     "testSolver_vecResults.dat" index (i-1) using 2:3:4:5 with vectors filled head lw 0.8 lc rgb 0x056608 notitle
 }
+
+reset 
+
+cd '/Users/zianhuang/Room214N/dev/mphil/lidDrivenCavity/data'
+set size square
+set terminal gif animate delay 5
+set output 'gif/tempPlot.gif'
+set xyplane at 0
+set xlabel "x"
+set ylabel "y"
+stats 'testSolver_tempResults.dat' using 4 nooutput
+set cbrange [STATS_min:STATS_max]
+set xrange [x0:x1]
+set yrange [y0:y1]
+do for [i=1:int(STATS_blocks)-1] {
+    plot 'testSolver_tempResults.dat' index (i-1) using 2:3:4 with image palette notitle
+}

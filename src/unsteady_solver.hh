@@ -29,8 +29,10 @@ public:
     UnsteadySolver();
     // initial conditions part 1:
     UnsteadySolver(int N, double tStop, double cfl, double re, double a);
+    void setTemp(double initTemp, double tempDiff);
     // initial conditions part 2:
     void setCompDomainVec(const Eigen::VectorXd &uVec, const Eigen::VectorXd &vVec, const Eigen::VectorXd &pVec);
+    void setCompDomainVec(const Eigen::VectorXd &uVec, const Eigen::VectorXd &vVec, const Eigen::VectorXd &pVec, const Eigen::VectorXd &tempVec);
     // other attributes
     void setOutputDataAttributes(std::string simulationName, std::string repoDir);
 
@@ -42,14 +44,17 @@ public:
     // solving the linear system at each time step
     void constructMatrixA_uv();
     void constructMatrixA_p();
+    void constructMatrixA_temp();
     void constructMatrixA_streamFunc();
 
     void constructLoadVecU();
     void constructLoadVecV();
     void constructLoadVecP();
+    void constructLoadVecTemp();
 
     void constructVorticityVec();
 
+    void solveForTemp_Next();
     void solveForU_Star(); // step 1 update fieldVecU
     void solveForV_Star(); // step 1 update fieldVecV
     void solveForP_Next(); // step 2 update fieldVecP
@@ -83,16 +88,24 @@ private:
     double m_y0 = m_x0;
     double m_y1 = m_x1;
     double m_dx;
+    double m_l = m_x1 - m_x0;
     // temporal parameters
     double m_tStart = 0.0;
     double m_tStop;
     bool m_reachedSteady = false;
+    // parameters introduced in heat transfer
+    double m_initTemp;
+    double m_tempDiff;
+    double m_rho = 1.0;
+    double m_cp = 1.0;
+    double m_lambda = 1.0;
 
     std::string m_repoDir;
     std::string m_simulationName;
     std::ofstream m_uResults;
     std::ofstream m_vResults;
     std::ofstream m_pResults;
+    std::ofstream m_tempResults;
     std::ofstream m_vecResults;
     std::ofstream m_streamFuncResults;
 
@@ -107,16 +120,19 @@ private:
     // sparse matrices at each time step
     Eigen::SparseMatrix<double> m_sMatrixA_uv;
     Eigen::SparseMatrix<double> m_sMatrixA_p;
+    Eigen::SparseMatrix<double> m_sMatrixA_temp;
     Eigen::SparseMatrix<double> m_sMatrixA_streamFunc;
     // sparse matrix solvers
     Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverUV;
     Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverP;
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverTemp;
     Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverStreamFunc;
 
     // field vectors at each step
     Eigen::VectorXd m_uVec;
     Eigen::VectorXd m_vVec;
     Eigen::VectorXd m_pVec;
+    Eigen::VectorXd m_tempVec;
     Eigen::VectorXd m_vortVec;
     Eigen::VectorXd m_streamFuncVec;
 
@@ -131,6 +147,7 @@ private:
     Eigen::VectorXd m_uLoadVec;
     Eigen::VectorXd m_vLoadVec;
     Eigen::VectorXd m_pLoadVec;
+    Eigen::VectorXd m_tempLoadVec;
 };
 
 #endif

@@ -82,17 +82,22 @@ int main()
     std::string simulationName;
     int plottingFactor;
     loadConfig(N, tStop, cfl, re, a, repoName, simulationName, plottingFactor);
+    double initTemp = 293.0;
+    double tempDiff = 10.0;
 
     // initially all zero w.r.t. the gauge pressure
     Eigen::VectorXd uVecInitialCond = Eigen::VectorXd::Zero(N * (N - 1));
     Eigen::VectorXd vVecInitialCond = Eigen::VectorXd::Zero(N * (N - 1));
     Eigen::VectorXd pVecInitialCond = Eigen::VectorXd::Zero(N * N);
+    Eigen::VectorXd tempVecInitialCond = initTemp * Eigen::VectorXd::Ones(N * N); // room temp
 
     UnsteadySolver testSolver(N, tStop, cfl, re, a);
-    testSolver.setCompDomainVec(uVecInitialCond, vVecInitialCond, pVecInitialCond);
+    testSolver.setTemp(initTemp, tempDiff);
+    testSolver.setCompDomainVec(uVecInitialCond, vVecInitialCond, pVecInitialCond, tempVecInitialCond);
     testSolver.setOutputDataAttributes(repoName, simulationName);
     testSolver.constructMatrixA_uv();
     testSolver.constructMatrixA_p();
+    testSolver.constructMatrixA_temp();
     testSolver.constructMatrixA_streamFunc();
 
     double t = 0.0;
@@ -100,9 +105,12 @@ int main()
     testSolver.writeDataToFiles(t);
     while (!testSolver.reachedSteady())
     {
+        testSolver.constructLoadVecTemp();
         testSolver.constructLoadVecU();
         testSolver.constructLoadVecV();
         testSolver.constructLoadVecP();
+
+        testSolver.solveForTemp_Next();
 
         testSolver.solveForU_Star();
         testSolver.solveForV_Star();
