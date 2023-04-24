@@ -1,10 +1,32 @@
-N 129
-tStop 15
+Space and Time Discretisation
+---------------------------------------
+x0 0
+x1 1
+y0 0
+y1 1
+n_x 101
+n_y 101
+tStop 200
 cfl 0.9
-re 100
-a 1.0
 
-plottingFactor 50
 
-repoName /Users/zianhuang/Room214N/dev/mphil/lidDrivenCavity/
+Fluid Physical Parameters
+---------------------------------------
+rho_0 1000
+temp_0 293
+c_p 4200
+mu 10
+k 1000
+
+
+Hydrodynamics and Buoyancy
+---------------------------------------
+a 0.05
+tempDiff -10
+
+
+Miscellaneous
+---------------------------------------
+repoDir /Users/zianhuang/Room214N/dev/mphil/lidDrivenCavity/
 simulationName testSolver
+plottingFactor 500

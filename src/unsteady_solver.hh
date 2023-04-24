@@ -11,38 +11,44 @@
 
 #ifndef UNSTEADY_SOLVER_HH
 #define UNSTEADY_SOLVER_HH
-
 #include <string>
-#include <vector>
 #include <fstream>
 #include <iostream>
 #include <algorithm>
-
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
 class UnsteadySolver
 {
 public:
-    // SETTING AND INITIALISING
-
+    //
+    // #############################################
+    // SETTING AND INITIALISING #################
     UnsteadySolver();
     // initial conditions part 1:
-    UnsteadySolver(int N, double tStop, double cfl, double re, double a);
-    void setTemp(double initTemp, double tempDiff);
+    UnsteadySolver(double x0, double x1, double y0, double y1, int n_x, int n_y, double tStop, double cfl);
+    void setPhysicalParameters(double rho_0, double temp_0, double tempDiff, double c_p, double mu, double k, double a);
+
     // initial conditions part 2:
-    void setCompDomainVec(const Eigen::VectorXd &uVec, const Eigen::VectorXd &vVec, const Eigen::VectorXd &pVec);
     void setCompDomainVec(const Eigen::VectorXd &uVec, const Eigen::VectorXd &vVec, const Eigen::VectorXd &pVec, const Eigen::VectorXd &tempVec);
+    void pressureShift();
+
     // other attributes
     void setOutputDataAttributes(std::string simulationName, std::string repoDir);
+    // END OF INITIALISATION ####################
+    // #############################################
+    //
 
-    // PUBLIC METHODS
-
+    //
+    // $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+    // METHODS $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+    // indexing public methods
     int getVecIdxU(int i, int j);
     int getVecIdxV(int i, int j);
     int getVecIdxP(int i, int j);
     // solving the linear system at each time step
-    void constructMatrixA_uv();
+    void constructMatrixA_u();
+    void constructMatrixA_v();
     void constructMatrixA_p();
     void constructMatrixA_temp();
     void constructMatrixA_streamFunc();
@@ -63,42 +69,49 @@ public:
 
     void solveForStreamFunc();
 
-    void checkIfBreak(double time);
+    void checkIfContinue(double time);
 
     void writeDataToFiles(double time);
 
     // ACCESSING PRIVATE MEMBERS
     const double tStop();
     const double dt();
-    const double reachedSteady();
+    const double okToContinue();
+    // END OF METHODS $$$$$$$$$$$$$$$$$$$$$$$$$$$
+    // $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+    //
 
 private:
-    // CONSTANT ATTRIBUTES
-    // -----------------------------
-
-    double m_tol = 1e-5;
-    double m_re;
-    double m_cfl;
-    double m_a;
-    // discretisation parameters
-    int m_N;
-    // spatial parameters
-    double m_x0 = 0.0;
-    double m_x1 = 1.0;
-    double m_y0 = m_x0;
-    double m_y1 = m_x1;
+    //
+    // ---------------------------------------------
+    // CONSTANT ATTRIBUTES ----------------------
+    double m_tol = 5e-6;
+    double m_a; // lid flow speed
+    // space discretisation parameters
+    int m_Nx;
+    int m_Ny;
+    double m_x0;
+    double m_x1;
+    double m_y0;
+    double m_y1;
+    double m_Lx;
+    double m_Ly;
     double m_dx;
-    double m_l = m_x1 - m_x0;
+    double m_dy;
     // temporal parameters
+    double m_dt;
+    double m_cfl;
     double m_tStart = 0.0;
     double m_tStop;
-    bool m_reachedSteady = false;
+    bool m_okToContinue = true;
     // parameters introduced in heat transfer
-    double m_initTemp;
+    double m_rho_0;
+    double m_temp_0;
     double m_tempDiff;
-    double m_rho = 1.0;
-    double m_cp = 1.0;
-    double m_lambda = 1.0;
+    double m_Cp;
+    // linear approximation coefficients
+    double m_mu;
+    double m_k;
 
     std::string m_repoDir;
     std::string m_simulationName;
@@ -108,22 +121,22 @@ private:
     std::ofstream m_tempResults;
     std::ofstream m_vecResults;
     std::ofstream m_streamFuncResults;
+    // END CONSTANT ATTRIBUTES ------------------
+    // ---------------------------------------------
+    //
 
-    // DYNAMIC ATTRIBUTES
-    // -----------------------------
-
-    double m_dt;
-
-    // COMPUTATIONAL DOMAIN ATTRIBUTES
-    // -----------------------------
-
+    //
+    // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    // COMPUTATIONAL DOMAIN %%%%%%%%%%%%%%%%%%%%%
     // sparse matrices at each time step
-    Eigen::SparseMatrix<double> m_sMatrixA_uv;
+    Eigen::SparseMatrix<double> m_sMatrixA_u;
+    Eigen::SparseMatrix<double> m_sMatrixA_v;
     Eigen::SparseMatrix<double> m_sMatrixA_p;
     Eigen::SparseMatrix<double> m_sMatrixA_temp;
     Eigen::SparseMatrix<double> m_sMatrixA_streamFunc;
     // sparse matrix solvers
-    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverUV;
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverU;
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverV;
     Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverP;
     Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverTemp;
     Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverStreamFunc;
@@ -148,6 +161,9 @@ private:
     Eigen::VectorXd m_vLoadVec;
     Eigen::VectorXd m_pLoadVec;
     Eigen::VectorXd m_tempLoadVec;
+    // END OF COMPUTATIONAL DOMAIN %%%%%%%%%%%%%%
+    // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    //
 };
 
 #endif
