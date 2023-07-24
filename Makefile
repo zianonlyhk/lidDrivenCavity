@@ -13,16 +13,16 @@ CPP_COMPILER = g++
 ADDITIONAL_LIB_PATH = -I/opt/homebrew/include/eigen3/
 OPTIMISATION = -O3
 
-OBJECTS = obj/main.o obj/unsteady_solver.o
+OBJECTS = $(patsubst src/%.cc,obj/%.o,$(wildcard src/*.cc))
 
-main: $(OBJECTS)
-	$(CPP_COMPILER) $(ADDITIONAL_LIB_PATH) $(OPTIMISATION) $(OBJECTS) -o bin/main
+default: $(OBJECTS)
+	$(CPP_COMPILER) $(ADDITIONAL_LIB_PATH) $(OPTIMISATION) -o bin/main $(OBJECTS)
 
 obj/main.o: src/main.cc
-	$(CPP_COMPILER) -c $(ADDITIONAL_LIB_PATH) $(OPTIMISATION) src/main.cc -o obj/main.o
+	$(CPP_COMPILER) -c $(ADDITIONAL_LIB_PATH) $(OPTIMISATION) -o obj/main.o src/main.cc
 
 obj/unsteady_solver.o: src/unsteady_solver.cc
-	$(CPP_COMPILER) -c $(ADDITIONAL_LIB_PATH) $(OPTIMISATION) src/unsteady_solver.cc -o obj/unsteady_solver.o
+	$(CPP_COMPILER) -c $(ADDITIONAL_LIB_PATH) $(OPTIMISATION) -o obj/unsteady_solver.o src/unsteady_solver.cc
 
 clean:
 	rm bin/main $(OBJECTS)

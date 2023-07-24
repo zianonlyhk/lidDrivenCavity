@@ -97,3 +97,4 @@ data/*
 debug/*
 test/*
 validation/*
+config.txt
