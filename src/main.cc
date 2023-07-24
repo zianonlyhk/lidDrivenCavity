@@ -180,7 +180,7 @@ int main()
     UnsteadySolver testSolver(x0, x1, y0, y1, n_x, n_y, tStop, cfl);
     testSolver.setPhysicalParameters(rho_0, temp_0, tempDiff, c_p, mu, k, a);
     testSolver.setCompDomainVec(uVecInitialCond, vVecInitialCond, pVecInitialCond, tempVecInitialCond);
-    testSolver.pressureShift();
+    // testSolver.pressureShift();
     testSolver.setOutputDataAttributes(repoDir, simulationName);
 
     // linear solvers

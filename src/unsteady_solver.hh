@@ -135,11 +135,11 @@ private:
     Eigen::SparseMatrix<double> m_sMatrixA_temp;
     Eigen::SparseMatrix<double> m_sMatrixA_streamFunc;
     // sparse matrix solvers
-    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverU;
-    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverV;
-    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverP;
-    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverTemp;
-    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> m_solverStreamFunc;
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > m_solverU;
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > m_solverV;
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > m_solverP;
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > m_solverTemp;
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > m_solverStreamFunc;
 
     // field vectors at each step
     Eigen::VectorXd m_uVec;

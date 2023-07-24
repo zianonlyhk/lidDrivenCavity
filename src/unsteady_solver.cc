@@ -602,7 +602,9 @@ void UnsteadySolver::constructLoadVecV()
                 nokia9 = m_uVec(getVecIdxU(i, j));
             }
 
-            m_vLoadVec(getVecIdxV(i, j)) = centre - m_dt / ((m_dx + m_dy) / 2) / 2 * (centre * (north - south) + (east - west) / 4 * (nokia1 + nokia3 + nokia7 + nokia9)) - m_dt * (m_tempVec(getVecIdxP(i, j)) - m_temp_0) / m_temp_0 * GRAVITY;
+            // m_vLoadVec(getVecIdxV(i, j)) = centre - m_dt / ((m_dx + m_dy) / 2) / 2 * (centre * (north - south) + (east - west) / 4 * (nokia1 + nokia3 + nokia7 + nokia9)) - m_dt * (m_tempVec(getVecIdxP(i, j)) - m_temp_0) / m_temp_0 * GRAVITY;
+            // m_vLoadVec(getVecIdxV(i, j)) = centre - m_dt / ((m_dx + m_dy) / 2) / 2 * (centre * (north - south) + (east - west) / 4 * (nokia1 + nokia3 + nokia7 + nokia9)) + m_dt / m_dx / m_dy * (GRAVITY - (0.5 * (m_tempVec(getVecIdxP(i, j)) + m_tempVec(getVecIdxP(i, j + 1))) - m_temp_0) / m_temp_0 * GRAVITY);
+            m_vLoadVec(getVecIdxV(i, j)) = centre - m_dt / ((m_dx + m_dy) / 2) / 2 * (centre * (north - south) + (east - west) / 4 * (nokia1 + nokia3 + nokia7 + nokia9));
 
             // top bottom omitted since they are zero due to staggered grid
             if (i == m_Nx - 1) // right
@@ -827,11 +829,11 @@ void UnsteadySolver::checkIfContinue(double time)
         std::cout << uContribution + vContribution << " encountered!" << std::endl;
     }
 
-    if (uContribution + vContribution < m_tol)
-    {
-        std::cout << "Steady state reached." << std::endl;
-        m_okToContinue = false;
-    }
+    // if (uContribution + vContribution < m_tol)
+    // {
+    //     std::cout << "Steady state reached." << std::endl;
+    //     m_okToContinue = false;
+    // }
 
     if (time > m_tStop)
     {
