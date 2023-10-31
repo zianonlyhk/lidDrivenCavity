@@ -91,10 +91,7 @@ Temporary Items
 
 .vscode/*
 
-bin/*
-obj/*
-data/*
-debug/*
-test/*
-validation/*
-config.txt
+bin/main
+obj/*.o
+data/*.dat
+data/gif/*.gif

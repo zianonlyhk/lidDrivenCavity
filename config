@@ -1,0 +1,32 @@
+Space and Time Discretisation
+---------------------------------------
+x0 0
+x1 1
+y0 0
+y1 1
+n_x 129
+n_y 129
+tStop 30
+cfl 0.9
+
+
+Fluid Physical Parameters
+---------------------------------------
+rho_0 400
+temp_0 293
+c_p 4200
+mu 1
+k 1
+
+
+Hydrodynamics and Buoyancy
+---------------------------------------
+a 1
+tempDiff 0
+
+
+Miscellaneous
+---------------------------------------
+repoDir /Users/zian/Room214N/github/lidDrivenCavity/
+simulationName testSolver
+plottingFactor 200

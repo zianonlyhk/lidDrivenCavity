@@ -18,7 +18,7 @@ void loadConfig(double &i_x0, double &i_x1, double &i_y0, double &i_y1,
                 double &i_k, double &i_a, double &i_tempDiff,
                 std::string &i_repoDir, std::string &i_simulationName, int &i_plottingFactor)
 {
-    std::ifstream in("./config.txt");
+    std::ifstream in("./config");
 
     std::string parameter;
 

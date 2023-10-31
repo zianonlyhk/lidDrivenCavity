@@ -5,10 +5,11 @@ x1 = 1
 y0 = 0
 y1 = 1
 
-cd '/Users/zianhuang/Room214N/dev/mphil/lidDrivenCavity/data'
+cd './data'
 set size square
-set terminal gif animate delay 5
+set terminal gif animate delay 15
 set output 'gif/uPlot.gif'
+set title "x-velocity"
 set xyplane at 0
 set xlabel "x"
 set ylabel "y"
@@ -22,10 +23,10 @@ do for [i=1:int(STATS_blocks)-1] {
 
 reset 
 
-cd '/Users/zianhuang/Room214N/dev/mphil/lidDrivenCavity/data'
 set size square
-set terminal gif animate delay 5
+set terminal gif animate delay 15
 set output 'gif/vPlot.gif'
+set title "y-velocity"
 set xyplane at 0
 set xlabel "x"
 set ylabel "y"
@@ -39,10 +40,10 @@ do for [i=1:int(STATS_blocks)-1] {
 
 reset 
 
-cd '/Users/zianhuang/Room214N/dev/mphil/lidDrivenCavity/data'
 set size square
-set terminal gif animate delay 5
+set terminal gif animate delay 15
 set output 'gif/pPlot.gif'
+set title "pressure"
 set xyplane at 0
 set xlabel "x"
 set ylabel "y"
@@ -56,9 +57,8 @@ do for [i=1:int(STATS_blocks)-1] {
 
 # reset 
 
-# cd '/Users/zianhuang/Room214N/dev/mphil/lidDrivenCavity/data'
 # set size square
-# set terminal gif animate delay 5
+# set terminal gif animate delay 15
 # set output 'gif/arrowPlot.gif'
 # set xyplane at 0
 # set xlabel "x"
@@ -72,9 +72,8 @@ do for [i=1:int(STATS_blocks)-1] {
 
 # reset session
 
-# cd '/Users/zianhuang/Room214N/dev/mphil/lidDrivenCavity/data'
 # set size square
-# set terminal gif animate delay 5
+# set terminal gif animate delay 15
 # set output 'gif/streamFuncPlot.gif'
 # set xyplane at 0
 # set xlabel "x"
@@ -89,10 +88,10 @@ do for [i=1:int(STATS_blocks)-1] {
 
 reset 
 
-cd '/Users/zianhuang/Room214N/dev/mphil/lidDrivenCavity/data'
 set size square
-set terminal gif animate delay 5
+set terminal gif animate delay 15
 set output 'gif/arrAndSfPlot.gif'
+set title "velocity direction and magnitude"
 set xyplane at 0
 set xlabel "x"
 set ylabel "y"
@@ -107,9 +106,8 @@ do for [i=1:int(STATS_blocks)-1] {
 
 reset 
 
-cd '/Users/zianhuang/Room214N/dev/mphil/lidDrivenCavity/data'
 set size square
-set terminal gif animate delay 5
+set terminal gif animate delay 15
 set output 'gif/tempPlot.gif'
 set xyplane at 0
 set xlabel "x"
